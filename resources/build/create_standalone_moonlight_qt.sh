@@ -2,33 +2,34 @@
 
 set -e
 
-cd "$(dirname "$0")"
+cd /tmp
 
-mkdir -p /home/moonlight-qt/lib/
-cd /home/moonlight-qt/lib/
+# Running AppImage inside docker fails if we don't remove some magic bits first,
+# see: https://github.com/AppImage/AppImageKit/issues/828
+dd if=/dev/zero bs=1 count=3 seek=8 conv=notrunc of=Moonlight-downloaded.AppImage
 
-cp -v -r /usr/lib/arm-linux-gnueabihf/qt5 .
-cp -v /usr/lib/arm-linux-gnueabihf/libGL.so* .
-cp -v /usr/lib/arm-linux-gnueabihf/libGLX.so* .
-cp -v /usr/lib/arm-linux-gnueabihf/libGLdispatch.so* .
-cp -v /usr/lib/arm-linux-gnueabihf/libQt5* .
-cp -v /usr/lib/arm-linux-gnueabihf/libXv.so* .
-cp -v /usr/lib/arm-linux-gnueabihf/libatomic.so* .
-cp -v /usr/lib/arm-linux-gnueabihf/libdouble-conversion.so* .
-cp -v /usr/lib/arm-linux-gnueabihf/libffi.so* .
-cp -v /usr/lib/arm-linux-gnueabihf/libicudata.so* .
-cp -v /usr/lib/arm-linux-gnueabihf/libicui18n.so* .
-cp -v /usr/lib/arm-linux-gnueabihf/libicuuc.so* .
-cp -v /usr/lib/arm-linux-gnueabihf/libmtdev.so* .
-cp -v /usr/lib/arm-linux-gnueabihf/libopus.so* .
-cp -v /usr/lib/arm-linux-gnueabihf/libpcre2-16.so* .
-cp -v /usr/lib/arm-linux-gnueabihf/libpng16.so* .
-cp -v /usr/lib/arm-linux-gnueabihf/libwayland-client.so* .
-# Optional
-cp -v /usr/lib/arm-linux-gnueabihf/libopus.so* .
+chmod +x Moonlight-downloaded.AppImage
 
+# Extract AppImage's contents to /tmp/squashfs-root
+./Moonlight-downloaded.AppImage --appimage-extract
 
-cd ..
-mkdir bin
-cp -v /usr/bin/moonlight-qt bin/
+# Include dependencies not present in LibreELEC
+DEPENDENCIES="
+  libbsd.so*
+  libICE.so*
+  libSM.so*
+  libXau.so*
+  libxcb.so*
+  libXdmcp.so*
+"
 
+for DEP in $DEPENDENCIES; do
+  cp /usr/lib/x86_64-linux-gnu/$DEP squashfs-root/usr/lib/
+  patchelf --set-rpath '$ORIGIN' squashfs-root/usr/lib/$DEP
+done
+
+# Recreate Moonlight's AppImage
+mksquashfs squashfs-root moonlight.squashfs -root-owned -noappend
+cat runtime > Moonlight.AppImage
+cat moonlight.squashfs >> Moonlight.AppImage
+chmod +x Moonlight.AppImage

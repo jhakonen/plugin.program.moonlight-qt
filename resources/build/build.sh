@@ -27,27 +27,19 @@ docker build --tag moonlight-qt .
 mkdir -p "$ADDON_PROFILE_PATH"
 cd "$ADDON_PROFILE_PATH"
 
-# Create an empty temporary folder
-rm -rf tmp
-mkdir tmp
-
 # Make sure no previous container exists
 docker rm --force moonlight-qt &> /dev/null || true
 
 # Extract files from container
+mkdir -p moonlight-qt/bin
 docker create --name moonlight-qt moonlight-qt
-docker cp moonlight-qt:/home/moonlight-qt tmp
+docker cp moonlight-qt:/tmp/Moonlight.AppImage moonlight-qt/bin/moonlight-qt
 
 # Clean up
 docker rm moonlight-qt
 docker container prune --force
 docker rmi moonlight-qt
-docker rmi navikey/raspbian-buster
+docker rmi debian:buster-slim
 docker image prune --force
-
-# Move the moonlight-qt build to the lib-folder
-rm -rf moonlight-qt
-mv tmp/moonlight-qt .
-rmdir tmp
 
 exit 0

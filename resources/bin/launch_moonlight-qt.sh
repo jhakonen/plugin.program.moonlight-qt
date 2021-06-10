@@ -15,17 +15,6 @@ fi
 
 HOME="$ADDON_PROFILE_PATH/moonlight-home"
 MOONLIGHT_PATH="$ADDON_PROFILE_PATH/moonlight-qt"
-LIB_PATH="$MOONLIGHT_PATH/lib"
-
-# Setup environment
-export XDG_RUNTIME_DIR=/var/run/
-
-# Setup library location
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LIB_PATH
-export QML_IMPORT_PATH=$LIB_PATH/qt5/qml/
-export QML2_IMPORT_PATH=$LIB_PATH/qt5/qml/
-export QT_QPA_PLATFORM_PLUGIN_PATH=$LIB_PATH/qt5/plugins/
-
 
 # Do not use pulseaudio because LibreELEC only uses it for output to Bluetooth speakers
 export PULSE_SERVER=none
@@ -33,14 +22,17 @@ export PULSE_SERVER=none
 # Make sure home path exists
 mkdir -p "$HOME"
 
-# Enter the Moonlight bin path
-cd "$MOONLIGHT_PATH/bin"
+# Select output audio device
+# TODO: Make configurable
+mkdir -p "$HOME/.config"
+echo 'defaults.pcm.!card 0;' > "${HOME}/.config/asound.conf"
+echo 'defaults.pcm.!device 3;' >> "${HOME}/.config/asound.conf"
 
 # Stop kodi
 systemctl stop kodi
 
 # Start moonlight-qt and log to log file
-./moonlight-qt "$@" | tee "$ADDON_PROFILE_PATH/moonlight-qt.log"
+"$MOONLIGHT_PATH/bin/moonlight-qt" "$@" | tee "$ADDON_PROFILE_PATH/moonlight-qt.log"
 
 # Start kodi
 systemctl start kodi

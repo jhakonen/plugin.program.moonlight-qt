@@ -1,22 +1,33 @@
-# Dockerized version for the Raspberry Pi 4 of moonlight-qt (https://github.com/moonlight-stream/moonlight-qt)
+# Dockerized version for the x86_64 of moonlight-qt (https://github.com/moonlight-stream/moonlight-qt)
 #
 # Run syntax: 
 #	docker build --tag moonlight-qt .
 #
 
-FROM navikey/raspbian-buster
+# Debian Buster has Qt version new enough to fill Moonlight's build
+# requirements, Buster is also one of LibreELEC's supported versions
+FROM debian:buster-slim
 
-RUN sudo apt-get update
+RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    git \
+    libsm-dev \
+    patchelf \
+    squashfs-tools \
+    wget \
+ && rm -rf /var/lib/apt/lists/*
 
-# If you want to update all the libraries to the latest version you can but it takes a long time
-# RUN sudo apt dist-upgrade -y
-
-RUN sudo DEBIAN_FRONTEND=noninteractive apt-get --no-install-recommends install -y curl apt-transport-https
-
-# See Installing Moonlight Qt on Raspberry Pi 4 (https://github.com/moonlight-stream/moonlight-docs/wiki/Installing-Moonlight-Qt-on-Raspberry-Pi-4)
-RUN curl -1sLf 'https://dl.cloudsmith.io/public/moonlight-game-streaming/moonlight-qt/setup.deb.sh' | sudo -E bash
-RUN sudo apt-get update
-RUN sudo DEBIAN_FRONTEND=noninteractive apt-get --no-install-recommends install -y moonlight-qt libgl1
+RUN VERSION=$(git ls-remote --tags https://github.com/moonlight-stream/moonlight-qt.git \
+   | cut -f2 \
+   | sed 's|refs/tags/v||' \
+   | grep -E '^[0-9.]+' \
+   | sort -r --version-sort \
+   | head -n1 \
+ ) \
+ && wget "https://github.com/moonlight-stream/moonlight-qt/releases/download/v${VERSION}/Moonlight-${VERSION}-x86_64.AppImage" \
+   -O /tmp/Moonlight-downloaded.AppImage \
+ && wget "https://github.com/AppImage/AppImageKit/releases/download/13/runtime-x86_64" \
+   -O /tmp/runtime
 
 # Copy the needed libraries
 COPY create_standalone_moonlight_qt.sh /tmp/
